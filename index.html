@@ -500,6 +500,8 @@
     let height = 0;
     let dpr = 1;
     let audioContext = null;
+    let alarmTimer = null;
+    let wakeLock = null;
 
     const colors = ["#ff405f", "#ff9345", "#ffd369", "#56e7ff", "#b69cff", "#fff8ec"];
 
@@ -624,19 +626,37 @@
       });
       saveTasks();
       render();
+      scheduleNextAlarm();
+      requestWakeLock();
     }
 
     function checkDueTasks() {
       const due = tasks.find((task) => !task.done && task.time <= Date.now());
-      if (!due || activeTaskId) {
+      if (activeTaskId) {
+        return;
+      }
+      if (!due) {
+        scheduleNextAlarm();
         return;
       }
 
-      due.done = true;
       activeTaskId = due.id;
-      saveTasks();
       render();
       showReminder(due);
+    }
+
+    function scheduleNextAlarm() {
+      window.clearTimeout(alarmTimer);
+      const next = tasks
+        .filter((task) => !task.done && task.time > Date.now())
+        .sort((a, b) => a.time - b.time)[0];
+
+      if (!next) {
+        return;
+      }
+
+      const delay = Math.max(0, next.time - Date.now());
+      alarmTimer = window.setTimeout(checkDueTasks, Math.min(delay, 2147483647));
     }
 
     function showReminder(task) {
@@ -659,8 +679,17 @@
     }
 
     function dismissReminder() {
+      if (activeTaskId && activeTaskId !== "preview") {
+        const task = tasks.find((candidate) => candidate.id === activeTaskId);
+        if (task) {
+          task.done = true;
+          saveTasks();
+          render();
+        }
+      }
       overlay.classList.remove("active");
       activeTaskId = null;
+      scheduleNextAlarm();
     }
 
     async function requestNotifications() {
@@ -671,6 +700,21 @@
 
       const permission = await Notification.requestPermission();
       notifyButton.textContent = permission === "granted" ? "系统通知已开启" : "系统通知未开启";
+      scheduleNextAlarm();
+    }
+
+    async function requestWakeLock() {
+      if (!("wakeLock" in navigator) || document.visibilityState !== "visible") {
+        return;
+      }
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => {
+          wakeLock = null;
+        });
+      } catch {
+        wakeLock = null;
+      }
     }
 
     function unlockAudio() {
@@ -833,6 +877,7 @@
     notifyButton.addEventListener("click", requestNotifications);
     testButton.addEventListener("click", () => {
       unlockAudio();
+      activeTaskId = "preview";
       showReminder({
         id: "preview",
         text: taskInput.value.trim() || "现在就去做这件事",
@@ -841,6 +886,14 @@
     });
 
     window.addEventListener("resize", resizeFx);
+    window.addEventListener("focus", checkDueTasks);
+    window.addEventListener("pageshow", checkDueTasks);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        requestWakeLock();
+        checkDueTasks();
+      }
+    });
 
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       navigator.serviceWorker.register("./sw.js");
@@ -853,6 +906,8 @@
     requestAnimationFrame(drawFx);
     setInterval(formatClock, 1000);
     setInterval(checkDueTasks, 1000);
+    scheduleNextAlarm();
+    checkDueTasks();
   </script>
 </body>
 </html>

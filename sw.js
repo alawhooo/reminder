@@ -1,4 +1,4 @@
-const CACHE_NAME = "boom-reminder-v2";
+const CACHE_NAME = "boom-reminder-v3";
 const APP_ASSETS = [
   "./",
   "./index.html",
