@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08090f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BOOM 提醒">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./app.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <title>Boom Reminder</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08090f;
+      --panel: rgba(18, 20, 30, 0.82);
+      --panel-strong: rgba(27, 30, 44, 0.92);
+      --line: rgba(255, 255, 255, 0.13);
+      --ink: #fff8ec;
+      --muted: rgba(255, 248, 236, 0.68);
+      --hot: #ff405f;
+      --orange: #ff9345;
+      --gold: #ffd369;
+      --cyan: #56e7ff;
+      --violet: #b69cff;
+      --ok: #70f0b8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background:
+        radial-gradient(circle at 24% 12%, rgba(86, 231, 255, 0.16), transparent 30%),
+        radial-gradient(circle at 88% 10%, rgba(255, 64, 95, 0.16), transparent 28%),
+        linear-gradient(180deg, #11141f 0%, #08090f 52%, #030407 100%);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    body {
+      min-height: 100svh;
+      padding: max(18px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(100%, 560px);
+      min-height: calc(100svh - 36px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 14px;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 2px 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 950;
+    }
+
+    .clock {
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .composer,
+    .list-wrap {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(18px);
+    }
+
+    .composer {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      padding: 0 12px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    input:focus {
+      border-color: rgba(86, 231, 255, 0.75);
+      box-shadow: 0 0 0 3px rgba(86, 231, 255, 0.14);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .primary,
+    .icon-btn,
+    .ghost {
+      height: 46px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 950;
+    }
+
+    .primary {
+      color: #12070a;
+      background: linear-gradient(135deg, var(--gold), var(--orange) 48%, var(--hot));
+      box-shadow: 0 12px 34px rgba(255, 64, 95, 0.24);
+    }
+
+    .icon-btn {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.11);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      font-size: 20px;
+    }
+
+    .ghost {
+      width: 100%;
+      color: var(--cyan);
+      background: rgba(86, 231, 255, 0.08);
+      border: 1px solid rgba(86, 231, 255, 0.22);
+    }
+
+    .list-wrap {
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .list-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 13px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .list-head strong {
+      font-size: 15px;
+    }
+
+    .list-head span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      overflow: auto;
+    }
+
+    .empty {
+      padding: 34px 20px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 13px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .item:last-child {
+      border-bottom: 0;
+    }
+
+    .task-title {
+      margin: 0 0 6px;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .pill.ready {
+      color: var(--ok);
+      background: rgba(112, 240, 184, 0.12);
+    }
+
+    .pill.due {
+      color: var(--hot);
+      background: rgba(255, 64, 95, 0.14);
+    }
+
+    .delete {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 8px;
+      color: rgba(255, 248, 236, 0.78);
+      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom));
+      background: rgba(2, 3, 7, 0.9);
+      overflow: hidden;
+    }
+
+    .overlay.active {
+      display: grid;
+    }
+
+    .fx {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .alert {
+      position: relative;
+      width: min(92vw, 520px);
+      display: grid;
+      gap: 16px;
+      justify-items: center;
+      text-align: center;
+      transform: translateY(24px) scale(0.78);
+      opacity: 0;
+      animation: slamIn 760ms cubic-bezier(.16, 1.18, .3, 1) 120ms forwards;
+      filter: drop-shadow(0 24px 70px rgba(0, 0, 0, 0.58));
+    }
+
+    .boom {
+      width: min(80vw, 390px);
+      aspect-ratio: 1 / 0.44;
+      display: grid;
+      place-items: center;
+      border: 2px solid rgba(255, 248, 236, 0.88);
+      background: linear-gradient(135deg, #ff405f 0%, #ff9345 50%, #ffd369 100%);
+      box-shadow:
+        0 0 0 8px rgba(255, 64, 95, 0.14),
+        0 0 54px rgba(255, 147, 69, 0.3),
+        inset 0 -14px 0 rgba(89, 17, 24, 0.14);
+      clip-path: polygon(7% 36%, 0 0, 25% 13%, 38% 0, 49% 15%, 66% 0, 72% 27%, 100% 18%, 83% 50%, 100% 82%, 70% 72%, 62% 100%, 49% 80%, 31% 100%, 27% 72%, 0 88%);
+      animation: shockPulse 1.18s ease-in-out infinite;
+    }
+
+    .boom span {
+      color: #1a080b;
+      font-size: clamp(54px, 18vw, 104px);
+      font-weight: 1000;
+      line-height: 0.88;
+      text-shadow:
+        2px 2px 0 rgba(255, 248, 236, 0.9),
+        0 9px 0 rgba(85, 12, 18, 0.16);
+    }
+
+    .alert-card {
+      width: 100%;
+      padding: 17px 18px 19px;
+      border: 1px solid rgba(255, 248, 236, 0.22);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(20, 22, 33, 0.84), rgba(7, 8, 14, 0.88));
+      backdrop-filter: blur(14px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11);
+    }
+
+    .alert-label {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .alert-message {
+      margin: 0;
+      font-size: clamp(30px, 8.6vw, 48px);
+      line-height: 1.11;
+      font-weight: 950;
+      overflow-wrap: anywhere;
+    }
+
+    .alert-time {
+      margin: 10px 0 0;
+      color: var(--gold);
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .dismiss {
+      position: relative;
+      width: min(92vw, 520px);
+      height: 48px;
+      border: 0;
+      border-radius: 8px;
+      color: #14080b;
+      background: var(--ink);
+      font-weight: 950;
+      cursor: pointer;
+      opacity: 0;
+      animation: fadeUp 420ms ease 1.1s forwards;
+    }
+
+    @keyframes slamIn {
+      0% {
+        opacity: 0;
+        transform: translateY(28px) scale(0.72) rotate(-1.5deg);
+      }
+      62% {
+        opacity: 1;
+        transform: translateY(-4px) scale(1.035) rotate(0.8deg);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(0);
+      }
+    }
+
+    @keyframes shockPulse {
+      0%,
+      100% {
+        transform: rotate(-0.6deg) scale(1);
+      }
+      50% {
+        transform: rotate(0.8deg) scale(1.025);
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (min-width: 700px) {
+      body {
+        padding-top: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>BOOM 提醒</h1>
+      <div class="clock" id="clock">--:--</div>
+    </header>
+
+    <form class="composer" id="form">
+      <div class="field">
+        <label for="task">要做的事</label>
+        <input id="task" maxlength="42" autocomplete="off" value="喝水，然后站起来活动 3 分钟">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="date">日期</label>
+          <input id="date" type="date">
+        </div>
+        <div class="field">
+          <label for="time">时间</label>
+          <input id="time" type="time">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" type="submit">设定提醒</button>
+        <button class="icon-btn" id="test" type="button" aria-label="预览动画">▶</button>
+      </div>
+      <button class="ghost" id="notify" type="button">开启系统通知</button>
+    </form>
+
+    <section class="list-wrap">
+      <div class="list-head">
+        <strong>提醒列表</strong>
+        <span id="count">0 个待提醒</span>
+      </div>
+      <ul class="list" id="list"></ul>
+    </section>
+  </main>
+
+  <section class="overlay" id="overlay" aria-live="assertive">
+    <canvas class="fx" id="fx" aria-hidden="true"></canvas>
+    <div class="alert">
+      <div class="boom"><span>BOOM</span></div>
+      <div class="alert-card">
+        <p class="alert-label">现在要做</p>
+        <h2 class="alert-message" id="alertMessage">喝水</h2>
+        <p class="alert-time" id="alertTime">--:--</p>
+      </div>
+      <button class="dismiss" id="dismiss" type="button">我知道了</button>
+    </div>
+  </section>
+
+  <script>
+    const storageKey = "boom-reminder.tasks.v1";
+
+    const form = document.querySelector("#form");
+    const taskInput = document.querySelector("#task");
+    const dateInput = document.querySelector("#date");
+    const timeInput = document.querySelector("#time");
+    const list = document.querySelector("#list");
+    const count = document.querySelector("#count");
+    const clock = document.querySelector("#clock");
+    const notifyButton = document.querySelector("#notify");
+    const testButton = document.querySelector("#test");
+    const overlay = document.querySelector("#overlay");
+    const dismissButton = document.querySelector("#dismiss");
+    const alertMessage = document.querySelector("#alertMessage");
+    const alertTime = document.querySelector("#alertTime");
+    const canvas = document.querySelector("#fx");
+    const ctx = canvas.getContext("2d");
+
+    let tasks = loadTasks();
+    let activeTaskId = null;
+    let particles = [];
+    let waves = [];
+    let sparkleUntil = 0;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let audioContext = null;
+
+    const colors = ["#ff405f", "#ff9345", "#ffd369", "#56e7ff", "#b69cff", "#fff8ec"];
+
+    function loadTasks() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveTasks() {
+      localStorage.setItem(storageKey, JSON.stringify(tasks));
+    }
+
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function toLocalDateValue(date) {
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function toLocalTimeValue(date) {
+      return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function formatDateTime(timestamp) {
+      return new Intl.DateTimeFormat("zh-CN", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date(timestamp));
+    }
+
+    function formatClock() {
+      clock.textContent = new Intl.DateTimeFormat("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).format(new Date());
+    }
+
+    function setDefaultTime() {
+      const date = new Date(Date.now() + 5 * 60 * 1000);
+      dateInput.value = toLocalDateValue(date);
+      timeInput.value = toLocalTimeValue(date);
+    }
+
+    function statusFor(task) {
+      if (task.done) {
+        return { text: "已提醒", className: "ready" };
+      }
+      if (task.time <= Date.now()) {
+        return { text: "到点了", className: "due" };
+      }
+      return { text: "待提醒", className: "ready" };
+    }
+
+    function render() {
+      const active = tasks.filter((task) => !task.done).sort((a, b) => a.time - b.time);
+      const done = tasks.filter((task) => task.done).sort((a, b) => b.time - a.time);
+      const ordered = [...active, ...done];
+
+      count.textContent = `${active.length} 个待提醒`;
+      list.innerHTML = "";
+
+      if (!ordered.length) {
+        list.innerHTML = '<li class="empty">还没有提醒。先设一个时间，到点它会 BOOM 一下。</li>';
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      for (const task of ordered) {
+        const status = statusFor(task);
+        const item = document.createElement("li");
+        item.className = "item";
+        item.innerHTML = `
+          <div>
+            <p class="task-title"></p>
+            <div class="task-meta">
+              <span class="pill">${formatDateTime(task.time)}</span>
+              <span class="pill ${status.className}">${status.text}</span>
+            </div>
+          </div>
+          <button class="delete" type="button" aria-label="删除提醒">×</button>
+        `;
+        item.querySelector(".task-title").textContent = task.text;
+        item.querySelector(".delete").addEventListener("click", () => {
+          tasks = tasks.filter((candidate) => candidate.id !== task.id);
+          saveTasks();
+          render();
+        });
+        fragment.appendChild(item);
+      }
+      list.appendChild(fragment);
+    }
+
+    function createTask(event) {
+      event.preventDefault();
+      unlockAudio();
+
+      const text = taskInput.value.trim();
+      const date = dateInput.value;
+      const time = timeInput.value;
+      if (!text || !date || !time) {
+        return;
+      }
+
+      const timestamp = new Date(`${date}T${time}:00`).getTime();
+      if (!Number.isFinite(timestamp)) {
+        return;
+      }
+
+      tasks.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        text,
+        time: timestamp,
+        done: false
+      });
+      saveTasks();
+      render();
+    }
+
+    function checkDueTasks() {
+      const due = tasks.find((task) => !task.done && task.time <= Date.now());
+      if (!due || activeTaskId) {
+        return;
+      }
+
+      due.done = true;
+      activeTaskId = due.id;
+      saveTasks();
+      render();
+      showReminder(due);
+    }
+
+    function showReminder(task) {
+      alertMessage.textContent = task.text;
+      alertTime.textContent = formatDateTime(task.time);
+      overlay.classList.add("active");
+      resizeFx();
+      resetFx();
+      playAlertSound();
+
+      if (navigator.vibrate) {
+        navigator.vibrate([90, 45, 120, 55, 90]);
+      }
+
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("BOOM 提醒", {
+          body: task.text
+        });
+      }
+    }
+
+    function dismissReminder() {
+      overlay.classList.remove("active");
+      activeTaskId = null;
+    }
+
+    async function requestNotifications() {
+      if (!("Notification" in window)) {
+        notifyButton.textContent = "当前浏览器不支持系统通知";
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      notifyButton.textContent = permission === "granted" ? "系统通知已开启" : "系统通知未开启";
+    }
+
+    function unlockAudio() {
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          audioContext = new AudioCtx();
+        }
+      }
+      if (audioContext && audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+    }
+
+    function playTone(start, frequency, duration, gainValue) {
+      if (!audioContext) {
+        return;
+      }
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.03);
+    }
+
+    function playAlertSound() {
+      unlockAudio();
+      if (!audioContext) {
+        return;
+      }
+      const now = audioContext.currentTime;
+      playTone(now, 220, 0.18, 0.14);
+      playTone(now + 0.18, 330, 0.16, 0.12);
+      playTone(now + 0.34, 520, 0.22, 0.1);
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function resizeFx() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function burst(x, y, amount, force, palette = colors) {
+      for (let i = 0; i < amount; i += 1) {
+        const angle = rand(0, Math.PI * 2);
+        const speed = force * rand(0.3, 1.12);
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - rand(0.1, 2.1),
+          size: rand(2, 6.5),
+          life: rand(48, 94),
+          maxLife: 94,
+          color: palette[(Math.random() * palette.length) | 0],
+          angle: rand(0, Math.PI),
+          spin: rand(-0.16, 0.16),
+          shape: Math.random() > 0.58 ? "rect" : "dot"
+        });
+      }
+      waves.push({ x, y, radius: 8, life: 1 });
+    }
+
+    function resetFx() {
+      particles = [];
+      waves = [];
+      sparkleUntil = performance.now() + 2300;
+      burst(width / 2, height * 0.46, 155, 7.3, ["#ff405f", "#ff9345", "#ffd369", "#fff8ec"]);
+      burst(width * 0.25, height * 0.22, 48, 4.6, ["#56e7ff", "#fff8ec", "#b69cff"]);
+      burst(width * 0.78, height * 0.28, 54, 4.8, ["#ffd369", "#ff405f", "#fff8ec"]);
+    }
+
+    function comet() {
+      burst(rand(width * 0.16, width * 0.84), rand(height * 0.12, height * 0.48), 34, rand(3.1, 4.8), [
+        colors[(Math.random() * colors.length) | 0],
+        "#fff8ec",
+        "#ffd369"
+      ]);
+    }
+
+    function drawFx(now) {
+      if (!overlay.classList.contains("active")) {
+        requestAnimationFrame(drawFx);
+        return;
+      }
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "rgba(4, 5, 10, 0.22)";
+      ctx.fillRect(0, 0, width, height);
+
+      const pulse = 0.5 + Math.sin(now / 180) * 0.5;
+      const glow = ctx.createRadialGradient(width / 2, height * 0.48, 0, width / 2, height * 0.48, Math.max(width, height) * 0.66);
+      glow.addColorStop(0, `rgba(255, 147, 69, ${0.11 + pulse * 0.06})`);
+      glow.addColorStop(0.38, "rgba(86, 231, 255, 0.04)");
+      glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, width, height);
+
+      if (now < sparkleUntil && Math.random() > 0.72) {
+        comet();
+      }
+
+      ctx.globalCompositeOperation = "lighter";
+      for (const wave of waves) {
+        wave.radius += 12;
+        wave.life -= 0.026;
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 248, 236, ${Math.max(wave.life, 0) * 0.38})`;
+        ctx.lineWidth = Math.max(1, 6 * wave.life);
+        ctx.stroke();
+      }
+      waves = waves.filter((wave) => wave.life > 0);
+
+      for (const p of particles) {
+        p.life -= 1;
+        p.vx *= 0.986;
+        p.vy += 0.08;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.angle += p.spin;
+
+        const alpha = Math.max(p.life / p.maxLife, 0);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.globalAlpha = Math.min(1, alpha * 1.36);
+        ctx.fillStyle = p.color;
+        if (p.shape === "rect") {
+          ctx.fillRect(-p.size * 0.72, -p.size * 0.23, p.size * 1.6, p.size * 0.46);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      particles = particles.filter((p) => p.life > 0 && p.y < height + 80);
+      ctx.globalCompositeOperation = "source-over";
+      requestAnimationFrame(drawFx);
+    }
+
+    form.addEventListener("submit", createTask);
+    dismissButton.addEventListener("click", dismissReminder);
+    notifyButton.addEventListener("click", requestNotifications);
+    testButton.addEventListener("click", () => {
+      unlockAudio();
+      showReminder({
+        id: "preview",
+        text: taskInput.value.trim() || "现在就去做这件事",
+        time: Date.now()
+      });
+    });
+
+    window.addEventListener("resize", resizeFx);
+
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("./sw.js");
+    }
+
+    setDefaultTime();
+    formatClock();
+    render();
+    resizeFx();
+    requestAnimationFrame(drawFx);
+    setInterval(formatClock, 1000);
+    setInterval(checkDueTasks, 1000);
+  </script>
+</body>
+</html>
